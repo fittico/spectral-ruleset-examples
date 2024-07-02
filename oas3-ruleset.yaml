@@ -1,0 +1,196 @@
+extends: spectral:oas
+functions: []
+formats: ["oas3"]
+rules:
+  paths-kebab-case:
+    x-tags:
+      - it
+    description: |
+      Paths should be kebab-case.
+    message: "{{property}} is not kebab-case: {{error}}"
+    severity: warn
+    recommended: true
+    given: $.paths[*]~
+    then:
+      function: pattern
+      functionOptions:
+        match: ^(/[a-z0-9-.]+|/{[a-zA-Z0-9_]+})+$
+  request-headers-pascal-case:
+    x-tags:
+      - it
+    description: |
+      Headers should be pascal-case.
+    message: "{{value}} {{error}} in {{path}}"
+    severity: hint
+    recommended: true
+    given:
+      - $.[parameters][?(@.in=="header")].name
+    then:
+      function: casing
+      functionOptions:
+        type: pascal
+        separator:
+          char: "-"
+  response-headers-pascal-case:
+    x-tags:
+      - it
+    description: |
+      Headers should be pascal-case.
+
+      See Italian recommendation RAC_REST_NAME_003.
+    message: "Header {{error}}: {{path}}"
+    severity: hint
+    recommended: true
+    given:
+      - $.[responses][*].headers.*~
+    then:
+      function: casing
+      functionOptions:
+        type: pascal
+        separator:
+          char: "-"
+  no-forbidden-headers:
+    x-tags:
+      - standards
+    description: |-
+      OAS do not allow using the following HTTP headers in a specification
+      file: Authorization, Content-Type and Accept.
+      You MUST use the associate functionalities provided by OAS, instead.
+    message: "{{error}} in {{path}} {{value}}"
+    severity: error
+    given:
+      - $..parameters[?(@.in == 'header')].name
+      - $.[responses][*].headers.*~
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: /^(accept|content-type|authorization)$/i
+  no-x-headers-request:
+    x-tags:
+      - standards
+    description: "'HTTP' headers SHOULD NOT start with 'X-' RFC6648."
+    severity: warn
+    given:
+      - $..parameters[?(@.in == 'header')].name
+    message: HTTP header '{{value}}' SHOULD NOT start with 'X-' in {{path}}
+    recommended: true
+    type: style
+    then:
+      function: pattern
+      functionOptions:
+        match: /^([^x]|.[^-])|RateLimit-/i
+  no-x-headers-response:
+    x-tags:
+      - standards
+    description: "'HTTP' headers SHOULD NOT start with 'X-' RFC6648."
+    severity: warn
+    given:
+      - $.[responses][*].headers.*~
+    message: HTTP response header SHOULD NOT start with 'X-' in {{path}}
+    recommended: true
+    type: style
+    then:
+      function: pattern
+      functionOptions:
+        match: /^([^x]|.[^-])|RateLimit-/i
+  servers-description:
+    x-tags:
+      - metadata
+      - it
+    description: Servers must have a description.
+    message: Server {{path}} must have a description.
+    given:
+      - $.servers[*]
+      - $.paths..servers
+    severity: error
+    recommended: true
+    then:
+      field: description
+      function: truthy
+  servers-use-https:
+    x-tags:
+      - security
+    description: |-
+      Servers must use https to ensure the origin of the responses
+      and protect the integrity and the  confidentiality of the communication.
+
+      You can use `http://` only on sandboxes environment.
+      Use `x-sandbox: true` to skip this kind of check.
+    message: "Non-sandbox url  {{value}} {{error}}. Add `x-sandbox: true` to skip
+      this check on a specific server."
+    given:
+      - $.servers[?(@["x-sandbox"] != true)]
+      - $.paths..servers[?(@["x-sandbox"] != true)]
+    severity: error
+    recommended: true
+    then:
+      field: url
+      function: pattern
+      functionOptions:
+        match: ^https://.*
+  has-x-summary:
+    x-tags:
+      - it
+      - metadata
+    message: "API MUST have an one-liner #/info/x-summary field containing a brief
+      description."
+    description: >-
+      The `#/info/x-summary` can be used to specify a brief, one-liner
+      description of your API: this is very useful for catalog purposes (eg.
+      this can be shown as your API subtitle in catalogs and developer portals).
+
+      In OAS3.1 you can use the standard `#/info/summary` field.
+    given: $
+    severity: error
+    recommended: true
+    type: style
+    formats:
+      - oas3
+    then:
+      field: info.x-summary
+      function: truthy
+  has-termsOfService:
+    x-tags:
+      - metadata
+    message: "API MUST reference the URL of the Terms of Service  in
+      #/info/termsOfService."
+    description: API MUST reference the URL of the Terms of Service  in
+      `#/info/termsOfService`
+    given: $
+    severity: error
+    recommended: true
+    type: style
+    formats:
+      - oas3
+    then:
+      field: info.termsOfService
+      function: truthy
+  has-contact:
+    x-tags:
+      - metadata
+    description: "API MUST reference a contact, either url or email in #/info/contact"
+    given: $
+    severity: error
+    recommended: true
+    type: style
+    formats:
+      - oas3
+    then:
+      field: info.contact
+      function: truthy
+  has-x-api-id:
+    x-tags:
+      - it
+      - metadata
+    message: "API must have an unique identifier in x-api-id in #/info/x-api-id."
+    description: |-
+      The `#/info/x-api-id` field can be used to associate an identifier
+      to an API.
+      This is useful to track an API even when its `#/info/title` changes.
+    given: $
+    severity: error
+    recommended: true
+    type: style
+    then:
+      field: info.x-api-id
+      function: truthy
